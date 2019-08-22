@@ -132,9 +132,9 @@ class HTTPConnection(Mapping):
             self._state = State(self.scope["state"])
         return self._state
 
-    def url_for(self, name: str, **path_params: typing.Any) -> str:
+    def url_for(self, *args: str, **kwargs: typing.Any) -> str:
         router = self.scope["router"]
-        url_path = router.url_path_for(name, **path_params)
+        url_path = router.url_path_for(*args, **kwargs)
         return url_path.make_absolute_url(base_url=self.base_url)
 
 

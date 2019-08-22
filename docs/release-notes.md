@@ -1,3 +1,7 @@
+## 0.13.x
+* Backwards compatible change to signatures of URL reversing methods
+  `url_for()` and `url_path_for()` allows to use `name` in path arguments.
+
 ## 0.13.0
 
 * Switch to promoting application configuration on init style everywhere.

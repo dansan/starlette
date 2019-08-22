@@ -54,9 +54,11 @@ class Jinja2Templates:
 
     def get_env(self, directory: str) -> "jinja2.Environment":
         @jinja2.contextfunction
-        def url_for(context: dict, name: str, **path_params: typing.Any) -> str:
+        def url_for(context: dict, *args: str, **kwargs: typing.Any) -> str:
+            assert len(args) > 0, "Missing route name as the first argument."
+            assert len(args) < 2, "Invalid positional argument passed."
             request = context["request"]
-            return request.url_for(name, **path_params)
+            return request.url_for(args[0], **kwargs)
 
         loader = jinja2.FileSystemLoader(directory)
         env = jinja2.Environment(loader=loader, autoescape=True)

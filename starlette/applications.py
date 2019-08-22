@@ -94,8 +94,8 @@ class Starlette:
         self._debug = value
         self.middleware_stack = self.build_middleware_stack()
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        return self.router.url_path_for(name, **path_params)
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        return self.router.url_path_for(*args, **kwargs)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         scope["app"] = self

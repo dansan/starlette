@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from starlette.applications import Starlette
 from starlette.requests import ClientDisconnect, Request, State
 from starlette.responses import JSONResponse, Response
 from starlette.testclient import TestClient
@@ -283,6 +284,24 @@ def test_request_cookies():
     assert response.text == "Hello, world!"
     response = client.get("/")
     assert response.text == "Hello, cookies!"
+
+
+def test_request_url_for():
+    app = Starlette()
+
+    @app.route("/users/{name}")
+    async def func_users(request):  # pragma: no cover
+        ...
+
+    @app.route("/test")
+    async def func_url_for_test(request: Request):
+        url = request.url_for("func_users", name="abcde")
+        return Response(str(url), media_type="text/plain")
+
+    client = TestClient(app)
+    response = client.get("/test")
+    assert response.status_code == 200
+    assert response.text == "http://testserver/users/abcde"
 
 
 def test_chunked_encoding():

@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import inspect
 import re
 import traceback
@@ -17,7 +18,7 @@ from starlette.websockets import WebSocket, WebSocketClose
 
 class NoMatchFound(Exception):
     """
-    Raised by `.url_for(name, **path_params)` and `.url_path_for(name, **path_params)`
+    Raised by `.url_for(*args, **kwargs)` and `.url_path_for(*args, **kwargs)`
     if no matching route exists.
     """
 
@@ -26,6 +27,16 @@ class Match(Enum):
     NONE = 0
     PARTIAL = 1
     FULL = 2
+
+
+def assert_args_is_only_route(func: typing.Callable) -> typing.Callable:
+    @functools.wraps(func)
+    def wrapper(self: BaseRoute, *args: str, **kwargs: str) -> URLPath:
+        assert len(args) > 0, "Missing route name as the first argument."
+        assert len(args) < 2, "Invalid positional argument passed."
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 def request_response(func: typing.Callable) -> ASGIApp:
@@ -127,7 +138,7 @@ class BaseRoute:
     def matches(self, scope: Scope) -> typing.Tuple[Match, Scope]:
         raise NotImplementedError()  # pragma: no cover
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         raise NotImplementedError()  # pragma: no cover
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -203,15 +214,16 @@ class Route(BaseRoute):
                     return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        seen_params = set(path_params.keys())
+    @assert_args_is_only_route
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
 
-        if name != self.name or seen_params != expected_params:
+        if args[0] != self.name or seen_params != expected_params:
             raise NoMatchFound()
 
         path, remaining_params = replace_params(
-            self.path_format, self.param_convertors, path_params
+            self.path_format, self.param_convertors, kwargs
         )
         assert not remaining_params
         return URLPath(path=path, protocol="http")
@@ -266,15 +278,16 @@ class WebSocketRoute(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        seen_params = set(path_params.keys())
+    @assert_args_is_only_route
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
 
-        if name != self.name or seen_params != expected_params:
+        if args[0] != self.name or seen_params != expected_params:
             raise NoMatchFound()
 
         path, remaining_params = replace_params(
-            self.path_format, self.param_convertors, path_params
+            self.path_format, self.param_convertors, kwargs
         )
         assert not remaining_params
         return URLPath(path=path, protocol="websocket")
@@ -339,12 +352,14 @@ class Mount(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        if self.name is not None and name == self.name and "path" in path_params:
+    @assert_args_is_only_route
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        name = args[0]
+        if self.name is not None and name == self.name and "path" in kwargs:
             # 'name' matches "<mount_name>".
-            path_params["path"] = path_params["path"].lstrip("/")
+            kwargs["path"] = kwargs["path"].lstrip("/")
             path, remaining_params = replace_params(
-                self.path_format, self.param_convertors, path_params
+                self.path_format, self.param_convertors, kwargs
             )
             if not remaining_params:
                 return URLPath(path=path)
@@ -355,10 +370,10 @@ class Mount(BaseRoute):
             else:
                 # 'name' matches "<mount_name>:<child_name>".
                 remaining_name = name[len(self.name) + 1 :]
-            path_kwarg = path_params.get("path")
-            path_params["path"] = ""
+            path_kwarg = kwargs.get("path")
+            kwargs["path"] = ""
             path_prefix, remaining_params = replace_params(
-                self.path_format, self.param_convertors, path_params
+                self.path_format, self.param_convertors, kwargs
             )
             if path_kwarg is not None:
                 remaining_params["path"] = path_kwarg
@@ -409,12 +424,14 @@ class Host(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
-        if self.name is not None and name == self.name and "path" in path_params:
+    @assert_args_is_only_route
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        name = args[0]
+        if self.name is not None and name == self.name and "path" in kwargs:
             # 'name' matches "<mount_name>".
-            path = path_params.pop("path")
+            path = kwargs.pop("path")
             host, remaining_params = replace_params(
-                self.host_format, self.param_convertors, path_params
+                self.host_format, self.param_convertors, kwargs
             )
             if not remaining_params:
                 return URLPath(path=path, host=host)
@@ -426,7 +443,7 @@ class Host(BaseRoute):
                 # 'name' matches "<mount_name>:<child_name>".
                 remaining_name = name[len(self.name) + 1 :]
             host, remaining_params = replace_params(
-                self.host_format, self.param_convertors, path_params
+                self.host_format, self.param_convertors, kwargs
             )
             for route in self.routes or []:
                 try:
@@ -477,10 +494,11 @@ class Router:
             response = PlainTextResponse("Not Found", status_code=404)
         await response(scope, receive, send)
 
-    def url_path_for(self, name: str, **path_params: str) -> URLPath:
+    @assert_args_is_only_route
+    def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         for route in self.routes:
             try:
-                return route.url_path_for(name, **path_params)
+                return route.url_path_for(args[0], **kwargs)
             except NoMatchFound:
                 pass
         raise NoMatchFound()
