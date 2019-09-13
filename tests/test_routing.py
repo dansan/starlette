@@ -173,9 +173,9 @@ def test_url_path_for():
         app.url_path_for("user", username="tom/christie")
     with pytest.raises(AssertionError):
         app.url_path_for("user", username="")
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         assert app.url_path_for("user", "args2", name="tomchristie1")
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         assert app.url_path_for(name="tomchristie1")
 
 

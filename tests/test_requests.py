@@ -290,8 +290,8 @@ def test_request_url_for():
     app = Starlette()
 
     @app.route("/users/{name}")
-    async def func_users(request):  # pragma: no cover
-        ...
+    async def func_users(request):
+        raise NotImplementedError()  # ignored by coverage
 
     @app.route("/test")
     async def func_url_for_test(request: Request):

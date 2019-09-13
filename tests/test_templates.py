@@ -15,6 +15,12 @@ def test_templates(tmpdir):
     app = Starlette(debug=True)
     templates = Jinja2Templates(directory=str(tmpdir))
 
+    url_for_func = templates.env.globals["url_for"]
+    with pytest.raises(TypeError):
+        assert url_for_func({}, "user", "args2", name="tomchristie")
+    with pytest.raises(TypeError):
+        assert url_for_func({}, name="tomchristie")
+
     @app.route("/")
     async def homepage(request):
         return templates.TemplateResponse("index.html", {"request": request})

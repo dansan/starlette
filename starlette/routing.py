@@ -29,11 +29,15 @@ class Match(Enum):
     FULL = 2
 
 
-def assert_args_is_only_route(func: typing.Callable) -> typing.Callable:
+def verify_args_is_only_route(func: typing.Callable) -> typing.Callable:
+    """Raise TypeError if number of positional arguments is not exactly 1."""
+
     @functools.wraps(func)
     def wrapper(self: BaseRoute, *args: str, **kwargs: str) -> URLPath:
-        assert len(args) > 0, "Missing route name as the first argument."
-        assert len(args) < 2, "Invalid positional argument passed."
+        if len(args) < 1:
+            raise TypeError("Missing route name as the first argument.")
+        if len(args) > 1:
+            raise TypeError("Invalid positional argument passed.")
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -214,7 +218,7 @@ class Route(BaseRoute):
                     return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @assert_args_is_only_route
+    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
@@ -278,7 +282,7 @@ class WebSocketRoute(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @assert_args_is_only_route
+    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
@@ -352,7 +356,7 @@ class Mount(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @assert_args_is_only_route
+    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         name = args[0]
         if self.name is not None and name == self.name and "path" in kwargs:
@@ -424,7 +428,7 @@ class Host(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @assert_args_is_only_route
+    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         name = args[0]
         if self.name is not None and name == self.name and "path" in kwargs:
@@ -494,7 +498,7 @@ class Router:
             response = PlainTextResponse("Not Found", status_code=404)
         await response(scope, receive, send)
 
-    @assert_args_is_only_route
+    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
         for route in self.routes:
             try:

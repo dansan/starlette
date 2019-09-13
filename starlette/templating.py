@@ -55,8 +55,10 @@ class Jinja2Templates:
     def get_env(self, directory: str) -> "jinja2.Environment":
         @jinja2.contextfunction
         def url_for(context: dict, *args: str, **kwargs: typing.Any) -> str:
-            assert len(args) > 0, "Missing route name as the first argument."
-            assert len(args) < 2, "Invalid positional argument passed."
+            if len(args) < 1:
+                raise TypeError("Missing route name as the second argument.")
+            if len(args) > 1:
+                raise TypeError("Invalid positional argument passed.")
             request = context["request"]
             return request.url_for(args[0], **kwargs)
 
