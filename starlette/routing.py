@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import inspect
 import re
 import traceback
@@ -27,20 +26,6 @@ class Match(Enum):
     NONE = 0
     PARTIAL = 1
     FULL = 2
-
-
-def verify_args_is_only_route(func: typing.Callable) -> typing.Callable:
-    """Raise TypeError if number of positional arguments is not exactly 1."""
-
-    @functools.wraps(func)
-    def wrapper(self: BaseRoute, *args: str, **kwargs: str) -> URLPath:
-        if len(args) < 1:
-            raise TypeError("Missing route name as the first argument.")
-        if len(args) > 1:
-            raise TypeError("Invalid positional argument passed.")
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 def request_response(func: typing.Callable) -> ASGIApp:
@@ -218,8 +203,8 @@ class Route(BaseRoute):
                     return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        assert len(args) == 1, "Sole positional argument must be the route name."
         seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
 
@@ -282,8 +267,8 @@ class WebSocketRoute(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        assert len(args) == 1, "Sole positional argument must be the route name."
         seen_params = set(kwargs.keys())
         expected_params = set(self.param_convertors.keys())
 
@@ -356,8 +341,8 @@ class Mount(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        assert len(args) == 1, "Sole positional argument must be the route name."
         name = args[0]
         if self.name is not None and name == self.name and "path" in kwargs:
             # 'name' matches "<mount_name>".
@@ -428,8 +413,8 @@ class Host(BaseRoute):
                 return Match.FULL, child_scope
         return Match.NONE, {}
 
-    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        assert len(args) == 1, "Sole positional argument must be the route name."
         name = args[0]
         if self.name is not None and name == self.name and "path" in kwargs:
             # 'name' matches "<mount_name>".
@@ -498,8 +483,9 @@ class Router:
             response = PlainTextResponse("Not Found", status_code=404)
         await response(scope, receive, send)
 
-    @verify_args_is_only_route
     def url_path_for(self, *args: str, **kwargs: str) -> URLPath:
+        if len(args) != 1 or len(args) == 1 and not isinstance(args[0], str):
+            raise TypeError("Sole positional argument must be the route name.")
         for route in self.routes:
             try:
                 return route.url_path_for(args[0], **kwargs)
