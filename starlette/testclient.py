@@ -95,7 +95,7 @@ class _ASGIAdapter(requests.adapters.HTTPAdapter):
         self.raise_server_exceptions = raise_server_exceptions
         self.root_path = root_path
 
-    def send(  # type: ignore
+    def send(
         self, request: requests.PreparedRequest, *args: typing.Any, **kwargs: typing.Any
     ) -> requests.Response:
         scheme, netloc, path, query, fragment = (
@@ -471,6 +471,8 @@ class TestClient(requests.Session):
     async def wait_startup(self) -> None:
         await self.receive_queue.put({"type": "lifespan.startup"})
         message = await self.send_queue.get()
+        if message is None:
+            self.task.result()
         assert message["type"] in (
             "lifespan.startup.complete",
             "lifespan.startup.failed",
