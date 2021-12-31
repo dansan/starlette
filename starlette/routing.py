@@ -663,7 +663,7 @@ class Router:
                 partial_scope = child_scope
 
         if partial is not None:
-            #  Handle partial matches. These are cases where an endpoint is
+            # Handle partial matches. These are cases where an endpoint is
             # able to handle the request, but is not a preferred option.
             # We use this in particular to deal with "405 Method Not Allowed".
             scope.update(partial_scope)
@@ -691,7 +691,7 @@ class Router:
         return isinstance(other, Router) and self.routes == other.routes
 
     # The following usages are now discouraged in favour of configuration
-    #  during Router.__init__(...)
+    # during Router.__init__(...)
     def mount(self, path: str, app: ASGIApp, name: str = None) -> None:
         route = Mount(path, app=app, name=name)
         self.routes.append(route)
