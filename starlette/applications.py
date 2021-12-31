@@ -119,7 +119,7 @@ class Starlette:
         await self.middleware_stack(scope, receive, send)
 
     # The following usages are now discouraged in favour of configuration
-    #  during Starlette.__init__(...)
+    # during Starlette.__init__(...)
     def on_event(self, event_type: str) -> typing.Callable:
         return self.router.on_event(event_type)
 
