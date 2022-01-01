@@ -22,6 +22,11 @@ def user(request):
     return Response(content, media_type="text/plain")
 
 
+def user2(request):
+    content = "User 2 " + request.path_params["name"]
+    return Response(content, media_type="text/plain")
+
+
 def user_me(request):
     content = "User fixed me"
     return Response(content, media_type="text/plain")
@@ -108,6 +113,7 @@ app = Router(
                 Route("/", endpoint=users),
                 Route("/me", endpoint=user_me),
                 Route("/{username}", endpoint=user),
+                Route("/n/{name}", endpoint=user2),
                 Route("/nomatch", endpoint=user_no_match),
             ],
         ),
@@ -179,6 +185,10 @@ def test_router(client):
     assert response.status_code == 200
     assert response.text == "User tomchristie"
 
+    response = client.get("/users/n/tomchristie")
+    assert response.status_code == 200
+    assert response.text == "User 2 tomchristie"
+
     response = client.get("/users/me")
     assert response.status_code == 200
     assert response.text == "User fixed me"
@@ -241,7 +251,12 @@ def test_route_converters(client):
 
 def test_url_path_for():
     assert app.url_path_for("homepage") == "/"
-    assert app.url_path_for("user", username="tomchristie") == "/users/tomchristie"
+    assert app.url_path_for("user", username="tomchristie1") == "/users/tomchristie1"
+    assert app.url_path_for("user2", name="tomchristie2") == "/users/n/tomchristie2"
+    with pytest.raises(NoMatchFound):
+        assert app.url_path_for("user", name="tomchristie1")
+    with pytest.raises(NoMatchFound):
+        assert app.url_path_for("user2", username="tomchristie2")
     assert app.url_path_for("websocket_endpoint") == "/ws"
     with pytest.raises(NoMatchFound):
         assert app.url_path_for("broken")
@@ -249,6 +264,10 @@ def test_url_path_for():
         app.url_path_for("user", username="tom/christie")
     with pytest.raises(AssertionError):
         app.url_path_for("user", username="")
+    with pytest.raises(AssertionError, match="takes exactly one positional argument"):
+        assert app.url_path_for("user", "args2", name="tomchristie1")
+    with pytest.raises(AssertionError, match="takes exactly one positional argument"):
+        assert app.url_path_for(name="tomchristie1")
 
 
 def test_url_for():
