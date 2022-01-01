@@ -29,3 +29,13 @@ def test_template_response_requires_request(tmpdir):
     templates = Jinja2Templates(str(tmpdir))
     with pytest.raises(ValueError):
         templates.TemplateResponse(None, {})
+
+
+def test_template_env_url_for_args(tmpdir):
+    templates = Jinja2Templates(directory=str(tmpdir))
+
+    url_for_func = templates.env.globals["url_for"]
+    with pytest.raises(TypeError, match="Invalid positional argument passed."):
+        assert url_for_func({}, "user", "args2", name="tomchristie")
+    with pytest.raises(TypeError, match="Missing route name as the second argument."):
+        assert url_for_func({}, name="tomchristie")
