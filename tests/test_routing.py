@@ -258,8 +258,14 @@ def test_url_path_for():
     with pytest.raises(NoMatchFound):
         assert app.url_path_for("user2", username="tomchristie2")
     assert app.url_path_for("websocket_endpoint") == "/ws"
-    with pytest.raises(NoMatchFound):
+    with pytest.raises(
+        NoMatchFound, match='No route exists for name "broken" and params "".'
+    ):
         assert app.url_path_for("broken")
+    with pytest.raises(
+        NoMatchFound, match='No route exists for name "broken" and params "key, key2".'
+    ):
+        assert app.url_path_for("broken", key="value", key2="value2")
     with pytest.raises(AssertionError):
         app.url_path_for("user", username="tom/christie")
     with pytest.raises(AssertionError):

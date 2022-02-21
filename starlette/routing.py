@@ -31,6 +31,10 @@ class NoMatchFound(Exception):
     if no matching route exists.
     """
 
+    def __init__(self, name: str, path_params: typing.Dict[str, typing.Any]) -> None:
+        params = ", ".join(list(path_params.keys()))
+        super().__init__(f'No route exists for name "{name}" and params "{params}".')
+
 
 class Match(Enum):
     NONE = 0
@@ -242,7 +246,7 @@ class Route(BaseRoute):
         expected_params = set(self.param_convertors.keys())
 
         if name != self.name or seen_params != expected_params:
-            raise NoMatchFound()
+            raise NoMatchFound(name, path_params)
 
         path, remaining_params = replace_params(
             self.path_format, self.param_convertors, path_params
@@ -313,7 +317,7 @@ class WebSocketRoute(BaseRoute):
         expected_params = set(self.param_convertors.keys())
 
         if name != self.name or seen_params != expected_params:
-            raise NoMatchFound()
+            raise NoMatchFound(name, path_params)
 
         path, remaining_params = replace_params(
             self.path_format, self.param_convertors, path_params
@@ -414,7 +418,7 @@ class Mount(BaseRoute):
                     )
                 except NoMatchFound:
                     pass
-        raise NoMatchFound()
+        raise NoMatchFound(name, path_params)
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.app(scope, receive, send)
@@ -480,7 +484,7 @@ class Host(BaseRoute):
                     return URLPath(path=str(url), protocol=url.protocol, host=host)
                 except NoMatchFound:
                     pass
-        raise NoMatchFound()
+        raise NoMatchFound(name, path_params)
 
     async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.app(scope, receive, send)
@@ -601,7 +605,7 @@ class Router:
                 return route.url_path_for(*args, **path_params)
             except NoMatchFound:
                 pass
-        raise NoMatchFound()
+        raise NoMatchFound(name, path_params)
 
     async def startup(self) -> None:
         """
